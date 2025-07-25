@@ -39,38 +39,10 @@ def log_train_metrics(step, train_loss, train_acc, lr, perplexity, grad_norm):
     logging.info(f"Step {step}: train_loss={train_loss:.4f}, train_acc={train_acc:.4f}, lr={lr:.6f}, perplexity={perplexity:.4f}, grad_norm={grad_norm:.4f}")
 
 def log_val_metrics(step, val_loss, val_acc):
-    """通过读写CSV文件，更新对应step的验证指标。"""
-    lines = []
-    step_found = False
-    try:
-        with open(METRICS_CSV, 'r', newline='') as f:
-            reader = csv.reader(f)
-            header = next(reader)
-            lines.append(header)
-            for row in reader:
-                if row and int(row[0]) == step:
-                    # 更新 val_loss 和 val_acc
-                    row[2] = f"{val_loss:.4f}"
-                    row[4] = f"{val_acc:.4f}"
-                    step_found = True
-                lines.append(row)
-        
-        if not step_found:
-            # 如果没有找到对应的step，说明是新的验证step，追加一行
-            # 这种情况理论上不应该发生，因为验证总是在训练后
-            lines.append([step, '', f"{val_loss:.4f}", '', f"{val_acc:.4f}", '', '', ''])
-
-        with open(METRICS_CSV, 'w', newline='') as f:
-            writer = csv.writer(f)
-            writer.writerows(lines)
-            
-    except FileNotFoundError:
-        # 如果文件不存在，直接创建并写入
-        with open(METRICS_CSV, 'w', newline='') as f:
-            writer = csv.writer(f)
-            writer.writerow(['step', 'train_loss', 'val_loss', 'train_acc', 'val_acc', 'lr', 'perplexity', 'grad_norm'])
-            writer.writerow([step, '', f"{val_loss:.4f}", '', f"{val_acc:.4f}", '', '', ''])
-
+    """记录验证指标到CSV和日志文件。"""
+    with open(METRICS_CSV, 'a', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow([step, '', val_loss, '', val_acc, '', '', ''])
     logging.info(f"Step {step}: val_loss={val_loss:.4f}, val_acc={val_acc:.4f}")
 
 def log_activations(activations_dict, step):

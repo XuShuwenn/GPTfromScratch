@@ -53,7 +53,11 @@ class GPT(Module):
         elif isinstance(module, Embedding):
             xavier_uniform_(module.weight)
 
-    def forward(self, x, attention_mask=None, output_attentions=False, output_activations=False):
+    def forward(self, 
+                x, 
+                attention_mask=None, 
+                output_attentions=False, 
+                output_activations=False):
         # 在这里直接使用类内部实例变量获取vocab_size，而不是通过self.config
         vocab_size = self.embedding.num_embeddings
         max_pos_len = self.pos_embedding.num_embeddings

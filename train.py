@@ -214,7 +214,7 @@ class Trainer:
                 # 定期评估
                 if hasattr(self.args, 'eval_steps') and total_steps % self.args.eval_steps == 0 and total_steps > 0:
                     if self.accelerator.is_main_process:
-                        val_loss, val_acc = self.evaluate(epoch)
+                        val_loss, val_acc = self.evaluate(epoch, log_metrics=False)  # 不在evaluate内部记录metrics
                         log_val_metrics(
                             step=total_steps,
                             val_loss=val_loss,
@@ -229,7 +229,7 @@ class Trainer:
                 avg_train_acc = epoch_train_correct / epoch_train_total if epoch_train_total > 0 else 0.0
                 
                 # 进行验证
-                val_loss, val_acc = self.evaluate(epoch)
+                val_loss, val_acc = self.evaluate(epoch, log_metrics=False)  # 不在evaluate内部记录metrics
                 
                 # 打印epoch结果
                 print(f"\n{'='*60}")
@@ -239,6 +239,7 @@ class Trainer:
                 print(f"Validation - Loss: {val_loss:.4f}, Accuracy: {val_acc:.4f}")
                 print(f"{'='*60}\n")
                 
+                # 只在epoch结束时记录一次metrics
                 log_val_metrics(
                     step=total_steps,
                     val_loss=val_loss,
@@ -277,7 +278,7 @@ class Trainer:
         
         self.accelerator.print("Final attention and activation artifacts have been logged.")
 
-    def evaluate(self, epoch):
+    def evaluate(self, epoch, log_metrics=True):
         # 验证
         self.model.eval()
         total_loss = 0.0
@@ -304,13 +305,8 @@ class Trainer:
         avg_loss = total_loss / total_steps if total_steps > 0 else 0.0
         avg_acc = total_correct / total_tokens if total_tokens > 0 else 0.0
         
-        # 在主进程上记录验证指标
-        if self.accelerator.is_main_process:
-            log_val_metrics(
-                step=(epoch + 1) * len(self.train_dataloader),
-                val_loss=avg_loss,
-                val_acc=avg_acc
-            )
+        # 只有在log_metrics=True时才记录验证指标（移除内部的metrics记录）
+        # 这样避免了重复记录的问题
             
         return avg_loss, avg_acc
 

@@ -11,6 +11,9 @@ class GPT2Tokenizer:
         # 设置pad token为eos token（GPT-2默认没有pad token）
         self.tokenizer.pad_token = self.tokenizer.eos_token
         self.pad_token_id = self.tokenizer.pad_token_id
+        # 暴露重要的token IDs
+        self.eos_token_id = self.tokenizer.eos_token_id
+        self.bos_token_id = self.tokenizer.bos_token_id
 
     def encode(self, text, add_special_tokens=False, max_length=None, padding=False, truncation=False):
         # 使用HuggingFace tokenizer编码
