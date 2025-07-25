@@ -23,7 +23,7 @@ __pycache__/
 .env
 .venv
 *.egg-info/
-
+.conda/
 # Jupyter Notebook checkpoints
 .ipynb_checkpoints/
 

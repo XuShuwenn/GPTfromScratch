@@ -1,69 +1,57 @@
 import torch
+from transformers import GPT2Tokenizer as HFTokenizer
 
 class GPT2Tokenizer:
     """
-    A simple tokenizer that tokenizes text into characters.
+    A wrapper around HuggingFace GPT2Tokenizer for compatibility.
     """
     def __init__(self, vocab_file=None):
-        # 简单实现：基于字符级别的tokenizer
-        # vocab_file: 可选，若有则加载词表，否则自动构建
-        self.vocab = {}
-        self.inv_vocab = {}
-        if vocab_file:
-            self.load_vocab(vocab_file)
-        else:
-            # 默认构建基础字符词表
-            self.vocab = {chr(i): i for i in range(32, 127)}
-            self.vocab['<pad>'] = 0
-            self.vocab['<unk>'] = 1
-            self.vocab['<bos>'] = 2
-            self.vocab['<eos>'] = 3
-            self.inv_vocab = {v: k for k, v in self.vocab.items()}
+        # 使用HuggingFace的GPT-2 tokenizer
+        self.tokenizer = HFTokenizer.from_pretrained('gpt2')
+        # 设置pad token为eos token（GPT-2默认没有pad token）
+        self.tokenizer.pad_token = self.tokenizer.eos_token
+        self.pad_token_id = self.tokenizer.pad_token_id
 
-    def load_vocab(self, vocab_file):
-        self.vocab = {}
-        with open(vocab_file, 'r', encoding='utf-8') as f:
-            for idx, line in enumerate(f):
-                token = line.strip()
-                self.vocab[token] = idx
-        self.inv_vocab = {v: k for k, v in self.vocab.items()}
-
-    def encode(self, text, add_special_tokens=True, max_length=None, padding=False, truncation=False):
-        # 字符级别编码
-        tokens = []
-        if add_special_tokens:
-            tokens.append(self.vocab.get('<bos>', 2))
-        for ch in text:
-            tokens.append(self.vocab.get(ch, self.vocab.get('<unk>', 1)))
-        if add_special_tokens:
-            tokens.append(self.vocab.get('<eos>', 3))
-        if truncation and max_length is not None:
-            tokens = tokens[:max_length]
-        if padding and max_length is not None:
-            while len(tokens) < max_length:
-                tokens.append(self.vocab.get('<pad>', 0))
-        return tokens
+    def encode(self, text, add_special_tokens=False, max_length=None, padding=False, truncation=False):
+        # 使用HuggingFace tokenizer编码
+        encoded = self.tokenizer.encode(
+            text,
+            add_special_tokens=add_special_tokens,
+            max_length=max_length,
+            padding='max_length' if padding else False,
+            truncation=truncation,
+            return_tensors=None
+        )
+        return encoded
 
     def decode(self, token_ids, skip_special_tokens=True):
-        tokens = []
-        for idx in token_ids:
-            token = self.inv_vocab.get(idx, '<unk>')
-            if skip_special_tokens and token in ['<pad>', '<unk>', '<bos>', '<eos>']:
-                continue
-            tokens.append(token)
-        return ''.join(tokens)
+        return self.tokenizer.decode(token_ids, skip_special_tokens=skip_special_tokens)
 
     def __call__(self, text, return_tensors=None, truncation=False, max_length=None, padding=False):
-        # 用于兼容HuggingFace风格
-        input_ids = self.encode(
-            text,
-            add_special_tokens=True,
-            max_length=max_length,
-            padding=padding,
-            truncation=truncation
-        )
-        if return_tensors == 'pt':
-            import torch
-            input_ids = torch.tensor([input_ids], dtype=torch.long)
-            return {'input_ids': input_ids}
-        return {'input_ids': input_ids}
+        # 兼容HuggingFace风格的调用
+        if isinstance(text, str):
+            # 单个文本
+            encoded = self.tokenizer(
+                text,
+                truncation=truncation,
+                max_length=max_length,
+                padding=padding,
+                return_tensors=return_tensors
+            )
+        elif isinstance(text, list):
+            # 批量文本
+            encoded = self.tokenizer(
+                text,
+                truncation=truncation,
+                max_length=max_length,
+                padding=padding,
+                return_tensors=return_tensors
+            )
+        else:
+            raise ValueError(f"Unsupported input type: {type(text)}")
+        
+        return encoded
+
+    @property
+    def vocab_size(self):
+        return self.tokenizer.vocab_size

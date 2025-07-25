@@ -1,7 +1,10 @@
 import torch
+import argparse
 from models.GPT import GPT, GPTConfig
+from utils.tokenizer import GPT2Tokenizer
 
 class Inference:
+    # ... (现有Inference类代码保持不变) ...
     def __init__(self, 
                  model,
                  tokenizer, 
@@ -27,7 +30,8 @@ class Inference:
         generated = input_ids
         for _ in range(max_length):
             outputs = self.model(generated)
-            logits = outputs[:, -1, :] / temperature
+            # 在多输出字典中获取logits
+            logits = outputs['logits'][:, -1, :] / temperature
             # top-k 采样
             if top_k > 0:
                 top_k_logits, top_k_indices = torch.topk(logits, top_k)
@@ -41,5 +45,42 @@ class Inference:
                 break
         output_text = self.tokenizer.decode(generated[0], skip_special_tokens=True)
         return output_text
+
+def main():
+    parser = argparse.ArgumentParser(description="GPT Inference Arguments")
+    parser.add_argument('--model_name', type=str, required=True, help='Name of the model config to use')
+    parser.add_argument('--model_path', type=str, required=True, help='Path to the trained model checkpoint')
+    parser.add_argument('--prompt', type=str, default="Once upon a time", help='Prompt to start generation')
+    parser.add_argument('--max_length', type=int, default=100, help='Maximum length of the generated text')
+    parser.add_argument('--temperature', type=float, default=0.7, help='Sampling temperature')
+    parser.add_argument('--top_k', type=int, default=20, help='Top-k sampling')
+    args = parser.parse_args()
+
+    # 根据model_name加载配置
+    # 这里需要一个机制来获取不同模型的配置，暂时用硬编码
+    if args.model_name == 'GPT2-8M':
+        config = GPTConfig(d_model=256, n_layers=12, n_heads=12, d_ff=1024)
+    elif args.model_name == 'GPT2-28M':
+        config = GPTConfig(d_model=512, n_layers=12, n_heads=16, d_ff=2048)
+    elif args.model_name == 'GPT2-110M':
+        config = GPTConfig(d_model=768, n_layers=12, n_heads=12, d_ff=3072)
+    else:
+        raise ValueError("Unknown model name")
+
+    model = GPT(config)
+    model.load_state_dict(torch.load(args.model_path))
+    tokenizer = GPT2Tokenizer()
+    
+    inference = Inference(model, tokenizer, config)
+    generated_text = inference.generate(
+        prompt=args.prompt,
+        max_length=args.max_length,
+        temperature=args.temperature,
+        top_k=args.top_k
+    )
+    print("Generated Text:\n", generated_text)
+
+if __name__ == "__main__":
+    main()
 
 

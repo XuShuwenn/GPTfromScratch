@@ -1,49 +1,57 @@
+import os
 import torch
 from torch.utils.data import Dataset
-from datasets import load_dataset, load_from_disk, DatasetDict
-import os
-
-DATASET_LOCAL_DIR = "data/tinystories"
-
-# 用于首次下载和缓存 TinyStories 数据集到本地
-def download_tinystories(local_dir=DATASET_LOCAL_DIR):
-    if not os.path.exists(local_dir):
-        print(f"Downloading TinyStories to {local_dir} ...")
-        dataset = load_dataset('roneneldan/TinyStories')
-        dataset.save_to_disk(local_dir)
-        print("Download and save complete.")
-    else:
-        print(f"TinyStories already exists at {local_dir}.")
+from datasets import load_from_disk
 
 class TinyStoryDataset(Dataset):
-    def __init__(self, split, tokenizer, block_size=128, max_samples=None, return_attention_mask=False, local_dir=DATASET_LOCAL_DIR):
-        # 优先从本地加载 TinyStories
-        if os.path.exists(local_dir):
-            dataset = load_from_disk(local_dir)[split]
-        else:
-            dataset = load_dataset('roneneldan/TinyStories', split=split)
-        texts = [item['text'] for item in dataset]
-        if max_samples:
-            texts = texts[:max_samples]
-        encodings = tokenizer(
-            texts,
-            return_tensors='pt',
-            truncation=True,
-            max_length=block_size,
-            padding='max_length'
-        )
-        self.input_ids = encodings['input_ids']
-        self.attention_mask = encodings.get('attention_mask', None)
-        self.return_attention_mask = return_attention_mask
+    def __init__(self, data_path, tokenizer, block_size):
+        self.tokenizer = tokenizer
+        self.block_size = block_size
+
+        # 缓存路径
+        split_name = os.path.basename(data_path)
+        base_dir = os.path.dirname(data_path)
+        cache_path = os.path.join(base_dir, f"tokenized_{split_name}_bs{block_size}")
+
+        try:
+            print(f"正在尝试从 '{cache_path}' 加载缓存...")
+            self.tokenized_datasets = load_from_disk(cache_path)
+            print("成功从缓存加载。")
+        except Exception:
+            print("未找到缓存，正在处理全部原始数据...")
+            raw_datasets = load_from_disk(data_path)
+
+            def tokenize_function(example):
+                text = example["story"]
+                tokenized_output = self.tokenizer.encode(text)
+                return {"input_ids": tokenized_output}
+
+            # 全量分词处理
+            self.tokenized_datasets = raw_datasets.map(
+                tokenize_function,
+                remove_columns=raw_datasets.column_names,
+                batched=False,
+                num_proc=os.cpu_count() // 2,
+                desc="Running tokenizer on dataset"
+            )
+
+            # 过滤掉长度超过 block_size 的样本
+            self.tokenized_datasets = self.tokenized_datasets.filter(
+                lambda example: len(example["input_ids"]) <= block_size
+            )
+
+            print(f"正在将处理后的数据保存到 '{cache_path}'...")
+            self.tokenized_datasets.save_to_disk(cache_path)
+            print("数据已保存。")
 
     def __len__(self):
-        return self.input_ids.size(0)
+        return len(self.tokenized_datasets)
 
     def __getitem__(self, idx):
-        data = {
-            'input_ids': self.input_ids[idx][:-1],
-            'labels': self.input_ids[idx][1:]
+        item = self.tokenized_datasets[idx]
+        input_ids = item['input_ids']
+        labels = list(input_ids)
+        return {
+            "input_ids": torch.tensor(input_ids, dtype=torch.long),
+            "labels": torch.tensor(labels, dtype=torch.long)
         }
-        if self.return_attention_mask and self.attention_mask is not None:
-            data['attention_mask'] = self.attention_mask[idx][:-1]
-        return data
