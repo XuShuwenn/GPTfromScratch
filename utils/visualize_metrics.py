@@ -3,105 +3,105 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 
+# 模型和数据集配置
 MODEL_NAMES = ['GPT2-14M', 'GPT2-29M', 'GPT2-49M']
 DATASET_NAME = 'tinystories'
+# 定义要可视化的指标
+METRICS_TO_PLOT = ['train_loss', 'val_loss', 'train_acc', 'val_acc', 'lr', 'perplexity', 'grad_norm']
+# 统一的图表保存目录
+SAVE_DIR = os.path.join('visualize', 'metrics')
 
 def clean_and_prepare_data(df, metric_name):
     """清理和准备数据用于可视化"""
     if metric_name not in df.columns or 'step' not in df.columns:
         return None
     
-    # 删除指标为空的行
     df_clean = df.dropna(subset=[metric_name]).copy()
-    
-    # 按step排序，去除重复的step（保留最后一个）
     df_clean = df_clean.sort_values('step').drop_duplicates(subset=['step'], keep='last')
     
-    # 特殊处理perplexity：过滤异常值
     if metric_name == 'perplexity':
+        # 过滤掉过大的困惑度值以便于可视化
         df_clean = df_clean[df_clean['perplexity'] < 1000]
     
     return df_clean if len(df_clean) > 0 else None
 
-def plot_metric(df_clean, metric_name, save_path, model_name):
-    """绘制单个指标的曲线图"""
-    plt.figure(figsize=(10, 6))
+def plot_combined_metric(metric_name, models_data, save_path):
+    """为单个指标绘制包含多个模型曲线的图表"""
+    plt.figure(figsize=(12, 7))
     
-    # 根据指标类型设置不同的样式
-    if metric_name == 'perplexity':
+    # 为不同模型设置不同的颜色和标记
+    colors = plt.cm.viridis(np.linspace(0, 1, len(MODEL_NAMES)))
+    markers = ['o', 's', '^', 'd', 'v', 'p', '*']
+    
+    for i, (model_name, df_clean) in enumerate(models_data.items()):
         plt.plot(df_clean['step'], df_clean[metric_name], 
-                linewidth=2, marker='o', markersize=3, alpha=0.8, color='red')
+                 label=model_name,
+                 linewidth=2, 
+                 marker=markers[i % len(markers)], 
+                 markersize=4, 
+                 alpha=0.8,
+                 color=colors[i])
+
+    # 根据指标类型设置图表属性
+    metric_title = metric_name.replace('_', ' ').title()
+    if 'loss' in metric_name or 'perplexity' in metric_name:
         plt.yscale('log')
-        plt.ylabel('Perplexity (log scale)')
-        plt.title(f'Perplexity Curve ({model_name}-{DATASET_NAME})')
-    elif 'loss' in metric_name:
-        plt.plot(df_clean['step'], df_clean[metric_name], 
-                linewidth=2, marker='s', markersize=3, alpha=0.8, color='blue')
-        plt.yscale('log')
-        plt.ylabel(f'{metric_name.replace("_", " ").title()} (log scale)')
-        plt.title(f'{metric_name.replace("_", " ").title()} Curve ({model_name}-{DATASET_NAME})')
+        plt.ylabel(f'{metric_title} (log scale)')
     elif 'acc' in metric_name:
-        plt.plot(df_clean['step'], df_clean[metric_name], 
-                linewidth=2, marker='^', markersize=3, alpha=0.8, color='green')
-        plt.ylabel(f'{metric_name.replace("_", " ").title()}')
-        plt.ylim(0, 1.05)
-        plt.title(f'{metric_name.replace("_", " ").title()} Curve ({model_name}-{DATASET_NAME})')
-    elif metric_name == 'lr':
-        plt.plot(df_clean['step'], df_clean[metric_name], 
-                linewidth=2, marker='d', markersize=3, alpha=0.8, color='orange')
-        plt.ylabel('Learning Rate')
-        plt.title(f'Learning Rate Schedule ({model_name}-{DATASET_NAME})')
-    elif metric_name == 'grad_norm':
-        plt.plot(df_clean['step'], df_clean[metric_name], 
-                linewidth=2, marker='v', markersize=3, alpha=0.8, color='purple')
-        plt.ylabel('Gradient Norm')
-        plt.title(f'Gradient Norm Curve ({model_name}-{DATASET_NAME})')
+        plt.ylim(0, max(1.0, plt.ylim()[1])) # 保证Y轴至少到1.0
+        plt.ylabel(metric_title)
     else:
-        plt.plot(df_clean['step'], df_clean[metric_name], 
-                linewidth=2, marker='o', markersize=3, alpha=0.8)
-        plt.ylabel(metric_name.replace('_', ' ').title())
-        plt.title(f'{metric_name.replace("_", " ").title()} Curve ({model_name}-{DATASET_NAME})')
-    
-    plt.xlabel('Training Step')
-    plt.grid(True, linestyle='--', alpha=0.7)
+        plt.ylabel(metric_title)
+
+    plt.title(f'{metric_title} Comparison across Models ({DATASET_NAME})', fontsize=16)
+    plt.xlabel('Training Step', fontsize=12)
+    plt.ylabel(plt.gca().get_ylabel(), fontsize=12)
+    plt.grid(True, which="both", linestyle='--', alpha=0.6)
+    plt.legend(title="Models", fontsize=10)
     plt.tight_layout()
     plt.savefig(save_path, dpi=300, bbox_inches='tight')
     plt.close()
+    print(f"  ✓ {metric_name}: 图表已保存至 {save_path}")
 
-for model_name in MODEL_NAMES:
-    CSV_PATH = os.path.join('logs', model_name, 'metrics.csv')
-    SAVE_DIR = os.path.join('visualize', model_name, 'metrics')
+def main():
+    """主函数，执行所有可视化任务"""
     os.makedirs(SAVE_DIR, exist_ok=True)
-    print(f"正在处理 {model_name} 模型的指标可视化...")
-    
-    if not os.path.exists(CSV_PATH):
-        print(f"警告: 未找到 {CSV_PATH} 文件，跳过该模型")
-        continue
     
     # 清理旧的可视化文件
+    print(f"清理旧的图表文件于: {SAVE_DIR}")
     for old_file in os.listdir(SAVE_DIR):
         if old_file.endswith('.png'):
             os.remove(os.path.join(SAVE_DIR, old_file))
-    
-    # 读取数据
-    df = pd.read_csv(CSV_PATH)
-    print(f"读取到数据文件，原始行数: {len(df)}")
-    
-    # 定义要可视化的指标
-    metrics_to_plot = ['train_loss', 'val_loss', 'train_acc', 'val_acc', 'lr', 'perplexity', 'grad_norm']
-    
-    success_count = 0
-    for metric in metrics_to_plot:
-        df_clean = clean_and_prepare_data(df, metric)
-        if df_clean is not None:
-            save_path = os.path.join(SAVE_DIR, f'{metric}_curve.png')
-            plot_metric(df_clean, metric, save_path, model_name)
-            print(f"  ✓ {metric}: 生成成功，数据点: {len(df_clean)}")
-            success_count += 1
-        else:
-            print(f"  ✗ {metric}: 无有效数据")
-    
-    print(f"模型 {model_name} 完成，成功生成 {success_count}/{len(metrics_to_plot)} 个指标图表")
-    print()
 
-print("所有模型的指标可视化完成！") 
+    # 按指标进行循环
+    for metric in METRICS_TO_PLOT:
+        print(f"\n正在处理指标: {metric}")
+        
+        models_data = {}
+        # 为当前指标收集所有模型的数据
+        for model_name in MODEL_NAMES:
+            csv_path = os.path.join('logs', model_name, 'metrics.csv')
+            if not os.path.exists(csv_path):
+                print(f"  - 警告: 未找到 {model_name} 的数据文件 {csv_path}，跳过")
+                continue
+            
+            df = pd.read_csv(csv_path)
+            df_clean = clean_and_prepare_data(df, metric)
+            
+            if df_clean is not None:
+                models_data[model_name] = df_clean
+                print(f"  - 已加载 {model_name} 的数据，数据点: {len(df_clean)}")
+            else:
+                print(f"  - {model_name} 无有效的 '{metric}' 数据")
+
+        # 如果至少有一个模型有数据，则绘图
+        if models_data:
+            save_path = os.path.join(SAVE_DIR, f'{metric}_comparison.png')
+            plot_combined_metric(metric, models_data, save_path)
+        else:
+            print(f"  ✗ 所有模型均无 '{metric}' 的有效数据，无法生成图表")
+
+    print("\n所有模型的指标对比可视化完成！")
+
+if __name__ == "__main__":
+    main() 

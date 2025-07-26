@@ -61,7 +61,7 @@ def visualize_attention_patterns(log_dir, save_dir):
 
 if __name__ == "__main__":
     # 支持多个模型的注意力可视化
-MODEL_NAMES = ['GPT2-14M', 'GPT2-29M', 'GPT2-49M']
+    MODEL_NAMES = ['GPT2-14M', 'GPT2-29M', 'GPT2-49M']
     for model_name in MODEL_NAMES:
         log_dir = os.path.join('logs', model_name)
         save_dir = os.path.join('visualize', 'attentions', model_name)

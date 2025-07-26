@@ -10,8 +10,6 @@ __pycache__/
 /logs/
 /output/
 
-#可视化
-/visualize/
 
 # 大文件
 *.pth

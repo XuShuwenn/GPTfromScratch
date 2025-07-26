@@ -7,11 +7,11 @@ set -e  # 遇到错误时退出
 
 # 默认参数
 export CUDA_VISIBLE_DEVICES=0
-MODEL_NAME="GPT2-29M"
-PROMPT="Once upon a time, "
-MAX_LENGTH=100
+MODEL_NAME="GPT2-49M"
+PROMPT="Hi, I'm a robot "
+MAX_LENGTH=300
 TEMPERATURE=0.9
-TOP_K=50
+TOP_K=40
 USE_BEST_CKPT=true
 
 # 显示使用帮助

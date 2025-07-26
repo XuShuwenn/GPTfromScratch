@@ -27,9 +27,9 @@ def visualize_activation_distributions(log_dir, save_dir):
 
 if __name__ == "__main__":
     # 支持多个模型的激活值可视化
-MODEL_NAMES = ['GPT2-14M', 'GPT2-29M', 'GPT2-49M']
+    MODEL_NAMES = ['GPT2-14M', 'GPT2-29M', 'GPT2-49M']
     for model_name in MODEL_NAMES:
         log_dir = os.path.join('logs', model_name)
         save_dir = os.path.join('visualize', 'activations', model_name)
         print(f"Processing activation visualization for {model_name}...")
-        visualize_activation_distributions(log_dir, save_dir) 
+        visualize_activation_distributions(log_dir, save_dir)
