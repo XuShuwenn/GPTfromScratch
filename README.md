@@ -10,11 +10,6 @@ This repository provides a minimal yet extensible implementation of the GPT arch
 - [Training](#training)
 - [Inference](#inference)
 - [Visualization](#visualization)
-- [Examples](#examples)
-- [FAQ](#faq)
-- [Contributing](#contributing)
-- [License](#license)
-- [Acknowledgments](#acknowledgments)
 
 ## Features
 
