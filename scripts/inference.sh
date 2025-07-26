@@ -6,12 +6,13 @@
 set -e  # 遇到错误时退出
 
 # 默认参数
+export PYTHONWARNINGS="ignore"
 export CUDA_VISIBLE_DEVICES=0
 MODEL_NAME="GPT2-49M"
-PROMPT="Hi, I'm a robot "
-MAX_LENGTH=300
-TEMPERATURE=0.9
-TOP_K=40
+PROMPT="Once upon a time, there was a little girl who loved to play in the garden."
+MAX_LENGTH=100
+TEMPERATURE=0.7
+TOP_K=20
 USE_BEST_CKPT=true
 
 # 显示使用帮助

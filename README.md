@@ -19,11 +19,11 @@ This repository provides a minimal yet extensible implementation of the GPT arch
 ## Features
 
 - **Custom GPT Models**: Supports multiple model sizes (GPT2-14M, GPT2-29M, GPT2-49M), easily extensible.
-- **Flexible Training**: Train on your own datasets with configurable hyperparameters.
+- **Flexible Training**: Train on your own datasets with configurable hyperparameters in shell scripts.
 - **Robust Inference**: Generate text with various sampling strategies and checkpoint selection.
 - **Comprehensive Visualization**: Analyze metrics, activations, and attention maps to understand model behavior.
 - **Modular Utilities**: Includes reusable utilities for data processing, logging, and parameter calculation.
-- **Lightweight & Educational**: Codebase is easy to read and modify, suitable for learning and prototyping.
+- **Datasets Analysis**:Evaluate datasets metrics, including basic statistic features, sentence complexity, vocalbulary&domain diversity.
 
 ## Project Structure
 
